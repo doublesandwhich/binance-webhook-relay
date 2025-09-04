@@ -1,6 +1,8 @@
+// server.js
 const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
+require('dotenv').config();
 
 const app = express();
 app.use(express.json());
@@ -13,10 +15,12 @@ app.get('/health', (req, res) => {
 // Webhook route to fetch USDT balance
 app.post('/webhook', async (req, res) => {
   try {
-    const { apiKey, apiSecret } = req.body;
+    const apiKey = process.env.BINANCE_API_KEY;
+    const apiSecret = process.env.BINANCE_API_SECRET;
 
     if (!apiKey || !apiSecret) {
-      return res.status(400).json({ error: 'Missing API credentials' });
+      console.error('❌ Missing Binance API credentials in environment');
+      return res.status(500).json({ error: 'Server misconfigured: missing credentials' });
     }
 
     const timestamp = Date.now();
@@ -26,22 +30,28 @@ app.post('/webhook', async (req, res) => {
       .update(queryString)
       .digest('hex');
 
-    const response = await axios.get(
-      `https://testnet.binance.vision/api/v3/account?${queryString}&signature=${signature}`,
-      {
-        headers: { 'X-MBX-APIKEY': apiKey }
-      }
-    );
+    const url = `https://testnet.binance.vision/api/v3/account?${queryString}&signature=${signature}`;
+    console.log(`🔍 Requesting Binance account info: ${url}`);
+
+    const response = await axios.get(url, {
+      headers: { 'X-MBX-APIKEY': apiKey }
+    });
 
     const usdtBalance = response.data.balances.find(b => b.asset === 'USDT');
-    res.json({ USDT: usdtBalance ? usdtBalance.free : '0' });
+    const balance = usdtBalance ? usdtBalance.free : '0';
+
+    console.log(`✅ USDT Balance fetched: ${balance}`);
+    res.json({ USDT: balance });
   } catch (error) {
-    console.error('❌ Webhook error:', error.message);
-    res.status(500).json({ error: 'Internal server error' });
+    const status = error.response?.status || 500;
+    const message = error.response?.data || error.message;
+    console.error(`❌ Webhook error [${status}]:`, message);
+    res.status(status).json({ error: message });
   }
 });
 
 // Start server
-app.listen(3000, () => {
-  console.log('✅ Webhook server running on port 3000');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Webhook server running on port ${PORT}`);
 });

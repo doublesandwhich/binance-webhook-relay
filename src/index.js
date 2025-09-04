@@ -1,18 +1,3 @@
-// server.js
-const express = require('express');
-const axios = require('axios');
-const crypto = require('crypto');
-require('dotenv').config();
-
-const app = express();
-app.use(express.json());
-
-// Health check route
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-// Webhook route to fetch USDT balance
 app.post('/webhook', async (req, res) => {
   try {
     const apiKey = process.env.BINANCE_API_KEY;
@@ -48,10 +33,4 @@ app.post('/webhook', async (req, res) => {
     console.error(`❌ Webhook error [${status}]:`, message);
     res.status(status).json({ error: message });
   }
-});
-
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Webhook server running on port ${PORT}`);
 });

@@ -1,3 +1,17 @@
+const express = require('express');
+const axios = require('axios');
+const crypto = require('crypto');
+require('dotenv').config();
+
+const app = express();
+app.use(express.json());
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// Webhook route
 app.post('/webhook', async (req, res) => {
   try {
     const apiKey = process.env.BINANCE_API_KEY;
@@ -16,7 +30,7 @@ app.post('/webhook', async (req, res) => {
       .digest('hex');
 
     const url = `https://testnet.binance.vision/api/v3/account?${queryString}&signature=${signature}`;
-    console.log(`🔍 Requesting Binance account info: ${url}`);
+    console.log(`🔍 Binance API request: ${url}`);
 
     const response = await axios.get(url, {
       headers: { 'X-MBX-APIKEY': apiKey }
@@ -25,7 +39,7 @@ app.post('/webhook', async (req, res) => {
     const usdtBalance = response.data.balances.find(b => b.asset === 'USDT');
     const balance = usdtBalance ? usdtBalance.free : '0';
 
-    console.log(`✅ USDT Balance fetched: ${balance}`);
+    console.log(`✅ USDT Balance: ${balance}`);
     res.json({ USDT: balance });
   } catch (error) {
     const status = error.response?.status || 500;
@@ -33,4 +47,10 @@ app.post('/webhook', async (req, res) => {
     console.error(`❌ Webhook error [${status}]:`, message);
     res.status(status).json({ error: message });
   }
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
